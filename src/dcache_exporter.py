@@ -1,17 +1,18 @@
-#!/usr/bin/python
+#! /usr/bin/python3
 
 import argparse
 import copy
-import httplib
+import http.client
 import re
 import prometheus_client as pclient
+import prometheus_client.core
 import socket
 import threading
 import time
 import xml.etree.ElementTree as ET
 
-from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
-from SocketServer import ThreadingMixIn
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from socketserver import ThreadingMixIn
 
 VERSION = '0.6'
 PROM_PORT = 9310
@@ -113,7 +114,7 @@ class DcacheCollector(object):
             d = sock.recv(1024)
             if not d:
                 break
-            data.append(d)
+            data.append(d.decode('utf-8'))
         sock.close()
         text = ''.join(data)
         tree = ET.fromstring(text)
@@ -137,7 +138,7 @@ class DcacheCollector(object):
         else:
             for child in element:
                 l = copy.copy(labels)
-                for n,v in element.attrib.iteritems():
+                for n,v in element.attrib.items():
                     l.append( ('{0}_{1}'.format(tag, n), v) )
                 self._collect_metric(child, export, l)
 
