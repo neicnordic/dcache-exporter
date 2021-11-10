@@ -20,6 +20,34 @@ PROM_ADDRESS = '::'
 INFO_PORT = 22112
 INFO_ADDRESS = 'localhost'
 
+DOOR_METRICS = ['load']
+DOMAIN_METRICS = ['event_queue_size', 'thread_count']
+POOL_METRICS = [
+    'active', 'queued',
+    'total_bytes', 'precious_bytes', 'removable_bytes', 'used_bytes', 'free_bytes',
+    'heartbeat_seconds', 'LRU_seconds',
+]
+POOLGROUP_METRICS = [
+    'active', 'queued',
+    'total_bytes', 'precious_bytes', 'removable_bytes', 'used_bytes', 'free_bytes',
+]
+LINK_METRICS = [
+    'total_bytes', 'precious_bytes', 'removable_bytes', 'used_bytes', 'free_bytes',
+]
+LINKGROUP_METRICS = [
+    'total_bytes', 'reserved_bytes', 'available_bytes', 'used_bytes', 'free_bytes',
+]
+
+METRIC_GROUPS = [
+    DOOR_METRICS,
+    DOMAIN_METRICS,
+    POOL_METRICS,
+    POOLGROUP_METRICS,
+    LINK_METRICS,
+    LINKGROUP_METRICS,
+]
+BYTES_METRICS = set(m[:-6] for g in METRIC_GROUPS for m in g if m.endswith('_bytes'))
+
 def start_http6_server(port, addr=''):
     """Starts an HTTP server for prometheus metrics as a daemon thread"""
     class ThreadingSimpleServer(ThreadingMixIn, HTTPServer):
@@ -90,15 +118,15 @@ class ExportTag(object):
                 return True
         return False
 
-
 class DcacheCollector(object):
     ExportTags = [
-        ExportTag('doors', 'door', False, [ 'load' ], [], None, None),
-        ExportTag('domains', 'domain', False, [ 'event_queue_size', 'thread_count' ], [], ExportTag.DomainInit, ExportTag.DomainFilter),
-        ExportTag('pools', 'pool', False, [ 'active', 'queued', 'total', 'precious', 'removable', 'used', 'free', 'last_heartbeat', 'LRU_seconds' ], [], None, None),
-        ExportTag('poolgroups', 'poolgroup', False, [ 'active', 'queued', 'total', 'precious', 'removable', 'used', 'free' ], [], None, None),
-        ExportTag('links', 'link', False, [ 'total', 'precious', 'removable', 'used', 'free' ], [], None, None),
-        ExportTag('linkgroups', 'linkgroup', False, [ 'total', 'reserved', 'available', 'used', 'free' ], [], None, None),
+        ExportTag('doors', 'door', False, DOOR_METRICS, []),
+        ExportTag('domains', 'domain', False, DOMAIN_METRICS, [],
+                  ExportTag.DomainInit, ExportTag.DomainFilter),
+        ExportTag('pools', 'pool', False, POOL_METRICS, []),
+        ExportTag('poolgroups', 'poolgroup', False, POOLGROUP_METRICS, []),
+        ExportTag('links', 'link', False, LINK_METRICS, []),
+        ExportTag('linkgroups', 'linkgroup', False, LINKGROUP_METRICS, []),
     ]
 
     def __init__(self, host, port, cluster):
@@ -124,11 +152,19 @@ class DcacheCollector(object):
         tree = ET.fromstring(text)
         return tree
 
+    @staticmethod
+    def _metric_transform(name):
+        if name in BYTES_METRICS:
+            return (name + '_bytes', id)
+        if name == 'last-heartbeat':
+            return ('heartbeat_seconds', (lambda x: x / 1000.0))
+        return (name.replace('-', '_'), id)
+
     def _collect_metric(self, element, export, labels):
         tag = get_short_tag(element)
         if tag == 'metric':
             type = element.attrib.get('type')
-            name = element.get('name').replace('-', '_')
+            name, transform = self._metric_transform(element.get('name'))
             if export.collect_metric(name, labels):
                 metric_name = 'dcache_{0}_{1}'.format(export.prefix, name)
                 if type == 'float' or type == 'integer':
@@ -136,6 +172,7 @@ class DcacheCollector(object):
                         value = float(element.text)
                     else:
                         value = int(element.text)
+                    value = transform(value)
                     if metric_name not in self._metrics:
                         self._metrics[metric_name] = pclient.core.GaugeMetricFamily(metric_name, '', labels=[ n for (n, v) in labels ])
                     self._metrics[metric_name].add_metric([ v for (n, v) in labels ], value)
