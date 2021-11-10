@@ -92,10 +92,14 @@ class ExportTag(object):
 
 
 class DcacheCollector(object):
-    ExportTags = [ ExportTag('doors', 'door', False, [ 'load' ], [], None, None),
-                   ExportTag('domains', 'domain', False, [ 'event_queue_size' ], [], ExportTag.DomainInit, ExportTag.DomainFilter),
-                   ExportTag('pools', 'pool', False, [ 'active', 'queued', 'total', 'precious', 'removable', 'used', 'free' ], [], None, None),
-                   ExportTag('poolgroups', 'poolgroup', False, [ 'active', 'queued', 'total', 'precious', 'removable', 'used', 'free' ], [], None, None) ]
+    ExportTags = [
+        ExportTag('doors', 'door', False, [ 'load' ], [], None, None),
+        ExportTag('domains', 'domain', False, [ 'event_queue_size', 'thread_count' ], [], ExportTag.DomainInit, ExportTag.DomainFilter),
+        ExportTag('pools', 'pool', False, [ 'active', 'queued', 'total', 'precious', 'removable', 'used', 'free', 'last_heartbeat', 'LRU_seconds' ], [], None, None),
+        ExportTag('poolgroups', 'poolgroup', False, [ 'active', 'queued', 'total', 'precious', 'removable', 'used', 'free' ], [], None, None),
+        ExportTag('links', 'link', False, [ 'total', 'precious', 'removable', 'used', 'free' ], [], None, None),
+        ExportTag('linkgroups', 'linkgroup', False, [ 'total', 'reserved', 'available', 'used', 'free' ], [], None, None),
+    ]
 
     def __init__(self, host, port, cluster):
         self._info_host = host
@@ -144,9 +148,12 @@ class DcacheCollector(object):
 
     def _collect_metrics_set(self, element, export):
         export.collect_init(element)
-        name = element.attrib.get('name')
-        if '@' in name:
-            name = name[:name.find('@')]
+        if get_short_tag(element) == 'linkgroup':
+            name = element.attrib.get('lgid')
+        else:
+            name = element.attrib.get('name')
+            if '@' in name:
+                name = name[:name.find('@')]
         labels = [ ('dcache_cluster', self._cluster), (export.prefix, name) ]
         for child in element:
             self._collect_metric(child, export, labels)
