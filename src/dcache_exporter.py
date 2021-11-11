@@ -155,10 +155,10 @@ class DcacheCollector(object):
     @staticmethod
     def _metric_transform(name):
         if name in BYTES_METRICS:
-            return (name + '_bytes', id)
+            return (name + '_bytes', (lambda x: x))
         if name == 'last-heartbeat':
             return ('heartbeat_seconds', (lambda x: x / 1000.0))
-        return (name.replace('-', '_'), id)
+        return (name.replace('-', '_'), (lambda x: x))
 
     def _collect_metric(self, element, export, labels):
         tag = get_short_tag(element)
