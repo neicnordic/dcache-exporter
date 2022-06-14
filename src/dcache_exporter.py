@@ -204,11 +204,14 @@ class DcacheCollector(object):
                     self._collect_metrics_set(elem, export)
 
     def collect(self):
-        self._tree = self._get_xml_tree()
-        self._ns = get_namespace(self._tree)
-        self._collect_all_metrics()
-        for metric_name in sorted(self._metrics.keys()):
-            yield self._metrics[metric_name]
+        try:
+            self._tree = self._get_xml_tree()
+            self._ns = get_namespace(self._tree)
+            self._collect_all_metrics()
+            for metric_name in sorted(self._metrics.keys()):
+                yield self._metrics[metric_name]
+        except ConnectionRefusedError:
+            pass
 
 
 def create_parser():
