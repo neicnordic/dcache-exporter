@@ -23,18 +23,28 @@ INFO_ADDRESS = 'localhost'
 DOOR_METRICS = ['load']
 DOMAIN_METRICS = ['event_queue_size', 'thread_count']
 POOL_METRICS = [
+    # pools/pool
+    'heartbeat_seconds', 'enabled',
+    # pools/pool/queues/?queue-names/queue
     'active', 'queued',
+    # pools/pool/space
     'total_bytes', 'precious_bytes', 'removable_bytes', 'used_bytes', 'free_bytes',
-    'heartbeat_seconds', 'LRU_seconds',
+    'gap_bytes', 'LRU_seconds', 'break_even',
 ]
 POOLGROUP_METRICS = [
-    'active', 'queued',
+    # poolgroups/poolgroup
+    'resilient',
+    # poolgroups/poolgroup/space
     'total_bytes', 'precious_bytes', 'removable_bytes', 'used_bytes', 'free_bytes',
 ]
 LINK_METRICS = [
+    # links/link/space
     'total_bytes', 'precious_bytes', 'removable_bytes', 'used_bytes', 'free_bytes',
+    # links/link/prefs
+    'cache', 'read', 'write', 'p2p',
 ]
 LINKGROUP_METRICS = [
+    # linkgroups/linkgroup/space
     'total_bytes', 'reserved_bytes', 'available_bytes', 'used_bytes', 'free_bytes',
 ]
 
@@ -167,8 +177,13 @@ class DcacheCollector(object):
             name, transform = self._metric_transform(element.get('name'))
             if export.collect_metric(name, labels):
                 metric_name = 'dcache_{0}_{1}'.format(export.prefix, name)
-                if type == 'float' or type == 'integer':
-                    if type == 'float':
+                if type in ['float', 'integer', 'boolean']:
+                    if type == 'boolean':
+                        if element.text.strip() == 'true':
+                            value = 1
+                        else:
+                            value = 0
+                    elif type == 'float':
                         value = float(element.text)
                     else:
                         value = int(element.text)
