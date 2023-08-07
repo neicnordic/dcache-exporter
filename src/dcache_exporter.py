@@ -24,7 +24,7 @@ DOOR_METRICS = ['load']
 DOMAIN_METRICS = ['event_queue_size', 'thread_count']
 POOL_METRICS = [
     # pools/pool
-    'heartbeat_seconds', 'enabled',
+    'heartbeat_seconds', 'enabled', 'read_only',
     # pools/pool/queues/?queue-names/queue
     'active', 'queued',
     # pools/pool/space
