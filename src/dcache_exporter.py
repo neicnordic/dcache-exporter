@@ -191,6 +191,14 @@ class DcacheCollector(object):
                     if metric_name not in self._metrics:
                         self._metrics[metric_name] = pclient.core.GaugeMetricFamily(metric_name, '', labels=[ n for (n, v) in labels ])
                     self._metrics[metric_name].add_metric([ v for (n, v) in labels ], value)
+        if tag == 'poolref':
+            metric_name = 'dcache_{0}_pool_rel'.format(export.prefix)
+            labels = copy.copy(labels)
+            labels.append(('pool', element.attrib.get('name')))
+            if not metric_name in self._metrics:
+                self._metrics[metric_name] = pclient.core.GaugeMetricFamily(
+                        metric_name, '', labels=[k for k, _ in labels])
+            self._metrics[metric_name].add_metric([v for _, v in labels], 1)
         else:
             for child in element:
                 l = copy.copy(labels)
